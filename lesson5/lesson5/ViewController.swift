@@ -8,99 +8,96 @@
 import UIKit
 
 class ViewController: UIViewController {
-
-    let presentButton = UIButton(type: .system)
+    private lazy var button: UIButton = {
+        let button = UIButton()
+        button.setTitleColor(.systemBlue, for: .normal)
+        button.setTitle("Показать", for: .normal)
+        button.addAction(
+            UIAction { _ in
+                self.presentPopover(self, PopupViewController(), sender: self.button, size: CGSize(width: 300, height: 280))
+            },
+            for: .touchUpInside
+        )
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupButton()
         view.backgroundColor = .white
-    }
-
-    private func setupButton() {
-        presentButton.setTitle("Present", for: .normal)
-        presentButton.addTarget(self, action: #selector(presentPopupController), for: .touchUpInside)
-        presentButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(presentButton)
-
+        view.addSubview(button)
         NSLayoutConstraint.activate([
-            presentButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            presentButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16)
+            button.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            button.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
-    }
-
-    @objc private func presentPopupController() {
-        let popupController = PopupController()
-        popupController.modalPresentationStyle = .popover
-        popupController.preferredContentSize = CGSize(width: 300, height: 280)
-
         
-        if let popoverController = popupController.popoverPresentationController {
-            popoverController.sourceView = presentButton
-            popoverController.sourceRect = presentButton.bounds
-            popoverController.delegate = self
-        }
-        present(popupController, animated: true)
     }
 }
 
-extension ViewController: UIPopoverPresentationControllerDelegate {
-    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle {
+extension UIViewController: UIPopoverPresentationControllerDelegate {
+    func presentPopover(_ parentViewController: UIViewController, _ viewController: UIViewController, sender: UIView, size: CGSize, arrowDirection: UIPopoverArrowDirection = .up) {
+        viewController.preferredContentSize = size
+        viewController.modalPresentationStyle = .popover
+        if let pres = viewController.presentationController {
+            pres.delegate = parentViewController
+        }
+        parentViewController.present(viewController, animated: true)
+        if let pop = viewController.popoverPresentationController {
+            pop.sourceView = sender
+            pop.sourceRect = sender.bounds
+            pop.permittedArrowDirections = arrowDirection
+        }
+    }
+
+    
+    public func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle {
         return .none
     }
 }
 
-
-class PopupController: UIViewController {
-
-    private var heightConstraint: NSLayoutConstraint?
-    private let heightSegmentedControl = UISegmentedControl(items: ["280pt", "150pt"])
-
+final class PopupViewController: UIViewController {
+    
+    private lazy var closeButton: UIButton = {
+        let button = UIButton(type: .close)
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .black
+        button.addAction(
+            UIAction { _ in
+                self.dismiss(animated: true, completion: nil)
+            },
+            for: .touchUpInside
+        )
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    private lazy var segmentedControl: UISegmentedControl = {
+        let items = ["280pt", "150pt"]
+        let segmentedControl = UISegmentedControl(items: items)
+        segmentedControl.selectedSegmentIndex = 0
+        segmentedControl.addAction(
+            UIAction { _ in
+                self.preferredContentSize = CGSize(width: 300, height: segmentedControl.selectedSegmentIndex == 0 ? 280 : 150)
+            },
+            for: .valueChanged
+        )
+        segmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        return segmentedControl
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
         view.backgroundColor = .white
-    }
-
-    private func setupUI() {
-        let containerView = UIView()
-        containerView.layer.cornerRadius = 12
-        containerView.backgroundColor = .systemGray3
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(containerView)
-
-        heightSegmentedControl.selectedSegmentIndex = 0
-        heightSegmentedControl.addTarget(self, action: #selector(heightChanged(_:)), for: .valueChanged)
-        heightSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
-        containerView.addSubview(heightSegmentedControl)
-
-        let closeButton = UIButton(type: .system)
-        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        containerView.addSubview(closeButton)
-
-        heightConstraint = containerView.heightAnchor.constraint(equalToConstant: 280)
+        view.addSubview(closeButton)
+        view.addSubview(segmentedControl)
+        
         NSLayoutConstraint.activate([
-            containerView.widthAnchor.constraint(equalToConstant: 300),
-            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            containerView.topAnchor.constraint(equalTo: view.topAnchor),
-            heightConstraint!,
-            closeButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
-            closeButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-            heightSegmentedControl.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 8),
-            heightSegmentedControl.centerXAnchor.constraint(equalTo: containerView.centerXAnchor)
+            closeButton.centerYAnchor.constraint(equalTo: segmentedControl.centerYAnchor, constant: 0),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            closeButton.widthAnchor.constraint(equalToConstant: 20),
+            closeButton.heightAnchor.constraint(equalToConstant: 20),
+            segmentedControl.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            segmentedControl.topAnchor.constraint(equalTo: view.topAnchor, constant: 20)
         ])
-    }
-
-    @objc private func heightChanged(_ sender: UISegmentedControl) {
-        heightConstraint?.constant = sender.selectedSegmentIndex == 0 ? 280 : 150
-        UIView.animate(withDuration: 0.3) {
-            self.view.layoutIfNeeded()
-        }
-    }
-
-    @objc private func close() {
-        dismiss(animated: true, completion: nil)
     }
 }
